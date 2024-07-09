@@ -10,6 +10,10 @@ from api.models import db
 from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
+# from flask_login import LoginManager, login_user, logout_user, login_required
+from flask_jwt_extended import create_access_token
+from src.api.models  import User 
+
 
 # from models import Person
 
@@ -68,6 +72,56 @@ def serve_any_other_file(path):
     return response
 
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        # print(request.form['username'])
+        # print(request.form['password'])
+        user = User(0, request.form['username'], request.form['password'])
+        logged_user = ModelUser.login(db, user)
+        if logged_user != None:
+            if logged_user.password:
+                login_user(logged_user)
+                return redirect(url_for('home'))
+            else:
+                flash("Invalid password...")
+                return render_template('auth/login.html')
+        else:
+            flash("User not found...")
+            return render_template('auth/login.html')
+    else:
+        return render_template('auth/login.html')
+
+
+
+
+@app.route("/token", methods=["POST"])
+def create_token():
+    username = request.json.get("username", None)
+    password = request.json.get("password", None)
+
+    
+    user = User.query.filter_by(username=username, password=password).first()
+
+    if user is None:
+        # el usuario no se encontró en la base de datos
+        return jsonify({"msg": "Bad username or password"}), 401
+    
+    # Crea un nuevo token con el id de usuario dentro
+    access_token = create_access_token(identity=user.id)
+    return jsonify({ "token": access_token, "user_id": user.id })
+
+# @app.route('/logout')
+# def logout():
+#     logout_user()
+#     return redirect(url_for('home'))
+# @app.route('/protected')
+# @login_required
+# def protected():
+#     return "<h1>Esta es una vista protegida, solo para usuarios autenticados.</h1>"
+
+app.config["JWT_SECRET_KEY"] = "super-secret" 
+jwt = JWTManager(app)
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 3001))
