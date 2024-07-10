@@ -11,8 +11,7 @@ from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
 # from flask_login import LoginManager, login_user, logout_user, login_required
-from flask_jwt_extended import JWTManager
-from flask_jwt_extended import create_access_token
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required
 # from src.api.models  import User 
 
 
@@ -43,7 +42,7 @@ setup_admin(app)
 setup_commands(app)
 
 # Add all endpoints form the API with a "api" prefix
-app.register_blueprint(api, url_prefix='/api')
+
 
 # Handle/serialize errors like a JSON object
 
@@ -97,7 +96,7 @@ def login():
 
 
 
-@api.route("/login", methods=["POST"])
+@api.route("/user/exist", methods=["POST"])
 def user_exist():
     email =request.json.get("email",None)
     password = request.json.get ("password", None)
@@ -116,7 +115,7 @@ def user_exist():
         }), 404
     
     access_token = create_access_token (identity = email)
-    return jsonify (access token = access_token)
+    return jsonify (access_token = access_token)
 
 
 
@@ -179,7 +178,7 @@ def protected():
 # @login_required
 # def protected():
 #     return "<h1>Esta es una vista protegida, solo para usuarios autenticados.</h1>"
-
+app.register_blueprint(api, url_prefix='/api')
 app.config["JWT_SECRET_KEY"] = "secretAccess" 
 jwt = JWTManager(app)
 # this only runs if `$ python src/main.py` is executed
