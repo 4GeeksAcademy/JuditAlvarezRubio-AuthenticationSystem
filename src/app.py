@@ -11,8 +11,9 @@ from api.routes import api
 from api.admin import setup_admin
 from api.commands import setup_commands
 # from flask_login import LoginManager, login_user, logout_user, login_required
+from flask_jwt_extended import JWTManager
 from flask_jwt_extended import create_access_token
-from src.api.models  import User 
+# from src.api.models  import User 
 
 
 # from models import Person
@@ -72,7 +73,7 @@ def serve_any_other_file(path):
     return response
 
 
-@app.route('/login', methods=['GET', 'POST'])
+@api.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         # print(request.form['username'])
@@ -91,6 +92,59 @@ def login():
             return render_template('auth/login.html')
     else:
         return render_template('auth/login.html')
+    
+
+
+
+
+@api.route("/login", methods=["POST"])
+def user_exist():
+    email =request.json.get("email",None)
+    password = request.json.get ("password", None)
+
+    user = User.query.filter_by (email = email).first()
+    print(user)
+
+    if user is None:
+        return jsonify ({
+            "msg" : "email is not correct"
+        }), 404
+    
+    if password != user.password:
+        return jsonify ({
+            "msg" : "password is not correct"
+        }), 404
+    
+    access_token = create_access_token (identity = email)
+    return jsonify (access token = access_token)
+
+
+
+
+@api.route ("/singup", methods = ["POST"])
+def singup():
+    body =request.get.json()
+    print(body)
+    user = User.query.filter_by (email = body ["email"]).first()
+    print (user)
+    if user is None:
+        user =User(email =body["email"], password = body ["password"], is_active =True)
+        db.sessionadd(user)
+        db.session.commit()
+        response_body = {
+            "msg" : "usesr created"
+        }
+        return jsonify (response_body), 200
+    else:
+        return jsonify ({
+            "msg":"this user has already been created"
+        })
+
+
+
+
+
+
 
 
 
@@ -100,17 +154,23 @@ def create_token():
     username = request.json.get("username", None)
     password = request.json.get("password", None)
 
+    if not username or not password:
+        return jsonify({"msg": "Username and password are required"}), 400
     
-    user = User.query.filter_by(username=username, password=password).first()
+    user = User.query.filter_by(username=username).first()
 
-    if user is None:
-        # el usuario no se encontró en la base de datos
+    if not user or not user.check_password(password):
         return jsonify({"msg": "Bad username or password"}), 401
     
-    # Crea un nuevo token con el id de usuario dentro
     access_token = create_access_token(identity=user.id)
-    return jsonify({ "token": access_token, "user_id": user.id })
+    return jsonify({"token": access_token, "user_id": user.id})
 
+
+@app.route("/judit", methods= ["GET"])
+@jwt_required()
+def protected():
+    current_user =get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
 # @app.route('/logout')
 # def logout():
 #     logout_user()
@@ -120,7 +180,7 @@ def create_token():
 # def protected():
 #     return "<h1>Esta es una vista protegida, solo para usuarios autenticados.</h1>"
 
-app.config["JWT_SECRET_KEY"] = "super-secret" 
+app.config["JWT_SECRET_KEY"] = "secretAccess" 
 jwt = JWTManager(app)
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
