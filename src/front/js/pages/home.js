@@ -62,7 +62,6 @@ export const Home= () => {
     
 <main class="form-signin w-100 m-auto">
   <form>
-    <img class="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57"/>
     <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
 
     <div class="form-floating">

@@ -1,22 +1,64 @@
-"""
-This module takes care of starting the API Server, Loading the DB and Adding the endpoints
-"""
-from flask import Flask, request, jsonify, url_for, Blueprint
+from flask import Blueprint, request, jsonify
 from api.models import db, User
-from api.utils import generate_sitemap, APIException
-from flask_cors import CORS
+from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 
 api = Blueprint('api', __name__)
 
-# Allow CORS requests to this API
-CORS(api)
+def register_api(app):
+    app.register_blueprint(api, url_prefix='/api')
 
+@api.route('/login', methods=['POST'])
+def login():
+    user = User(0, request.form['username'], request.form['password'])
+    logged_user = User.login(db, user)
+    if logged_user:
+        access_token = create_access_token(identity=logged_user.id)
+        return jsonify(access_token=access_token), 200
+    return jsonify({"msg": "Invalid username or password"}), 401
 
-@api.route('/hello', methods=['POST', 'GET'])
-def handle_hello():
+@api.route("/user/exist", methods=["POST"])
+def user_exist():
+    email = request.json.get("email")
+    password = request.json.get("password")
 
-    response_body = {
-        "message": "Hello! I'm a message that came from the backend, check the network tab on the google inspector and you will see the GET request"
-    }
+    user = User.query.filter_by(email=email).first()
+    if user is None:
+        return jsonify({"msg": "Email is not correct"}), 404
 
-    return jsonify(response_body), 200
+    if password != user.password:
+        return jsonify({"msg": "Password is not correct"}), 404
+
+    access_token = create_access_token(identity=email)
+    return jsonify(access_token=access_token)
+
+@api.route("/signup", methods=["POST"])
+def signup():
+    body = request.get_json()
+    user = User.query.filter_by(email=body["email"]).first()
+    if user is None:
+        user = User(email=body["email"], password=body["password"], is_active=True)
+        db.session.add(user)
+        db.session.commit()
+        return jsonify({"msg": "User created"}), 200
+    return jsonify({"msg": "This user has already been created"}), 409
+
+@api.route("/token", methods=["POST"])
+def create_token():
+    username = request.json.get("username")
+    password = request.json.get("password")
+
+    if not username or not password:
+        return jsonify({"msg": "Username and password are required"}), 400
+
+    user = User.query.filter_by(username=username).first()
+    if not user or not user.check_password(password):
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    access_token = create_access_token(identity=user.id)
+    return jsonify({"token": access_token, "user_id": user.id})
+
+@api.route("/judit", methods=["GET"])
+@jwt_required()
+def protected():
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
