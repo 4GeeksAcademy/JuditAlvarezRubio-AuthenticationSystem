@@ -1,19 +1,30 @@
 from flask import Blueprint, request, jsonify
 from api.models import db, User
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
-
+from flask_migrate import Migrate
 api = Blueprint('api', __name__)
 
 def register_api(app):
     app.register_blueprint(api, url_prefix='/api')
 
+
+
+@api.route('/admin')
+def admin():
+    return "Admin Page"
+
+
 @api.route('/login', methods=['POST'])
 def login():
-    user = User(0, request.form['username'], request.form['password'])
-    logged_user = User.login(db, user)
+    username = request.form['username']
+    password = request.form['password']
+    user = User(username=username, password=password)  # Cambiar para reflejar el modelo
+
+    logged_user = User.login(db, user)  # Asegúrate de que este método esté implementado correctamente
     if logged_user:
         access_token = create_access_token(identity=logged_user.id)
         return jsonify(access_token=access_token), 200
+
     return jsonify({"msg": "Invalid username or password"}), 401
 
 @api.route("/user/exist", methods=["POST"])
