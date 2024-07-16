@@ -19,8 +19,8 @@ def register_api(app):
 
 @api.route('/register', methods=['POST']) #sirve para verificar si el usuario existe y sino crear uno nuevo
 def register():
-    username = request.form['username']
-    password = request.form['password']
+    username = request.json['username']
+    password = request.json['password']
 
     if User.query.filter_by(username=username).first() is not None:
         return jsonify({"msg": "Username already taken"}), 400
